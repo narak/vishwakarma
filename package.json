@@ -1,0 +1,11 @@
+{
+  "name": "vishwakarma",
+  "description": "YUI Builder for Idea Device.",
+  "author": {
+    "name": "Karan Sheth"
+  },
+  "dependencies": {
+    "gaze": "*",
+    "colors": "*"
+  }
+}
