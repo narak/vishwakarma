@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "gaze": "*",
-    "colors": "*"
+    "colors": "*",
+    "minimist": "*"
   }
 }

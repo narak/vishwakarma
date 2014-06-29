@@ -11,13 +11,22 @@
 
 var logger = require('./lib/logger'),
     Gaze = require('gaze').Gaze,
-    modules = require('./lib/modules');
+    modules = require('./lib/modules'),
+    args = require('minimist')(process.argv.slice(2));
 
 modules.configure({
     moduleConfigFile: 'build.json',
-    dependencyConfigFile: '*.json',
-    basePath: __dirname
+    dependencyConfigFile: '*.json'
 });
+
+var ll = args.v;
+if (ll) {
+    if (ll === 'info' || ll === 'debug') {
+        logger.logLevel(ll);
+    } else {
+        logger.logLevel('info');
+    }
+}
 
 var excludePaths = ['!**/node_modules/**'],
     gazeConfig = {
