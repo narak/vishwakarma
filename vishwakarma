@@ -37,6 +37,11 @@ var setup = function(config) {
         return;
     }
 
+    var cwd = args.b || args.baseDir;
+    if (cwd) {
+        process.chdir(cwd);
+    }
+
     modules.configure({
         moduleConfigFile: 'build.json',
         dependencyConfigFile: '*.json',
