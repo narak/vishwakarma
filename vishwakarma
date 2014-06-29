@@ -12,12 +12,72 @@
 var logger = require('./lib/logger'),
     Gaze = require('gaze').Gaze,
     modules = require('./lib/modules'),
+    fs = require('fs'),
     args = require('minimist')(process.argv.slice(2));
 
-modules.configure({
-    moduleConfigFile: 'build.json',
-    dependencyConfigFile: '*.json'
-});
+var readConfigFile = function(file) {
+    fs.readFile(file, function(err, data) {
+        if (err) {
+            logger.error(err);
+            return;
+        }
+        try {
+            setup(JSON.parse(data));
+        } catch(e) {
+            logger.error(e);
+            logger.error(e.trace);
+        }
+    });
+}
+
+var setup = function(config) {
+    var buildDest = args.dest || args.d || config.buildDir;
+    if (!buildDest) {
+        logger.error('Build directory not configured.');
+        return;
+    }
+
+    modules.configure({
+        moduleConfigFile: 'build.json',
+        dependencyConfigFile: '*.json',
+        buildDir: buildDest
+    });
+
+    startUp();
+};
+
+var startUp = function() {
+    var excludePaths = ['!**/node_modules/**'],
+        gazeConfig = {
+            // If this is not set, it fires a added/deleted one after the other instead
+            // of changed, possibly some inconsistency with how VM file systems are handled?
+            mode: 'poll',
+
+            // Delay for events called in succession for the same file/event
+            debounceDelay: 200
+        };
+
+    var gw = new Gaze(['**/*.json', '**/*.js'].concat(excludePaths), gazeConfig);
+
+    logger.out('Vishwakarma:', 'Starting up...');
+    gw.watched(function(err, watched) {
+        // watched is an object with all the directories as keys and values as an
+        // array of all its values.
+        var files = [];
+        for (var key in watched) {
+            files = files.concat(watched[key].filter(function(file) {
+                // If file is in watched that means its a directory, so skip it.
+                return !watched[file];
+            }));
+        }
+        modules.prepare(files);
+
+        // On changed/added/deleted
+        gw.on('all', function(event, file) {
+            modules.build(event, file);
+        });
+    });
+}
 
 var ll = args.v;
 if (ll) {
@@ -28,33 +88,17 @@ if (ll) {
     }
 }
 
-var excludePaths = ['!**/node_modules/**'],
-    gazeConfig = {
-        // If this is not set, it fires a added/deleted one after the other instead
-        // of changed, possibly some inconsistency with how VM file systems are handled?
-        mode: 'poll',
-
-        // Delay for events called in succession for the same file/event
-        debounceDelay: 200
-    };
-
-var gw = new Gaze(['**/*.json', '**/*.js'].concat(excludePaths), gazeConfig);
-
-logger.out('Vishwakarma:', 'Starting up...');
-gw.watched(function(err, watched) {
-    // watched is an object with all the directories as keys and values as an
-    // array of all its values.
-    var files = [];
-    for (var key in watched) {
-        files = files.concat(watched[key].filter(function(file) {
-            // If file is in watched that means its a directory, so skip it.
-            return !watched[file];
-        }));
+var configFile = args.c ||  args.config;
+if (configFile) {
+    if (!fs.existsSync(configFile)) {
+        logger.error("Couldn't find config file:", configFile);
+    } else {
+        readConfigFile(configFile);
     }
-    modules.prepare(files);
-
-    // On changed/added/deleted
-    gw.on('all', function(event, file) {
-        modules.build(event, file);
-    });
-});
+} else {
+    if (fs.existsSync('vishwakarma.json')) {
+        readConfigFile('vishwakarma.json');
+    } else {
+        setup({});
+    }
+}
