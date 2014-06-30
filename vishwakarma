@@ -11,7 +11,7 @@
 
 var logger = require('./lib/logger'),
     Gaze = require('gaze').Gaze,
-    modules = require('./lib/modules'),
+    builder = require('./lib/builder'),
     fs = require('fs'),
     args = require('minimist')(process.argv.slice(2));
 
@@ -42,7 +42,7 @@ var setup = function(config) {
         process.chdir(cwd);
     }
 
-    modules.configure({
+    builder.configure({
         moduleConfigFile: 'build.json',
         dependencyConfigFile: '*.json',
         buildDir: buildDest
@@ -62,7 +62,7 @@ var startUp = function() {
             debounceDelay: 200
         };
 
-    var gw = new Gaze(['**/*.json', '**/*.js'].concat(excludePaths), gazeConfig);
+    var gw = new Gaze(['**/*.json', '**/*.js', '**/*.css'].concat(excludePaths), gazeConfig);
 
     logger.out('Vishwakarma:', 'Starting up...');
     gw.watched(function(err, watched) {
@@ -75,11 +75,11 @@ var startUp = function() {
                 return !watched[file];
             }));
         }
-        modules.prepare(files);
+        builder.prepare(files);
 
         // On changed/added/deleted
         gw.on('all', function(event, file) {
-            modules.build(event, file);
+            builder.build(event, file);
         });
     });
 }
